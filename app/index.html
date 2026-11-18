@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>S12 · Cloud Lab</title>
+  <style>
+    :root{color-scheme:dark;font-family:system-ui,sans-serif;background:#0a1222;color:#eaf0fb}
+    *{box-sizing:border-box}body{margin:0}main{max-width:1050px;margin:auto;padding:55px 24px}
+    .eyebrow{color:#93b9ff;text-transform:uppercase;letter-spacing:.18em;font-size:12px}
+    h1{font-size:clamp(36px,6vw,62px);letter-spacing:-.05em;margin:18px 0}p{color:#aab9d1;line-height:1.65}
+    .top{display:flex;justify-content:space-between;gap:20px;align-items:center}.badge{border:1px solid #3c5578;border-radius:30px;padding:9px 14px;font-size:13px;white-space:nowrap}
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:32px 0}
+    article,.panel{background:#111e33;border:1px solid #263b59;border-radius:16px;padding:24px}
+    h2{font-size:13px;color:#aab9d1;font-weight:500;margin:0 0 16px}.value{font-size:25px;font-weight:650;overflow-wrap:anywhere}
+    small{display:block;color:#9cafca;margin-top:10px}.ok{color:#79e7bc}.bad{color:#ff9b9b}
+    .flow{font-family:monospace;color:#b5cdf8;line-height:2;font-size:15px}.actions{display:flex;gap:15px;align-items:center;flex-wrap:wrap;margin:24px 0}
+    button{background:#aac9ff;border:0;border-radius:9px;color:#0b1831;font-weight:700;padding:13px 20px;cursor:pointer}
+    a{color:#aac9ff}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.7;color:#b9cbea}
+    footer{margin-top:25px;color:#8294b2;font-size:12px}@media(max-width:700px){.grid{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
+  </style>
+</head>
+<body><main>
+  <div class="top"><span class="eyebrow">OAS / Práctica S12 · AP9</span><span id="badge" class="badge" role="status">Consultando estado…</span></div>
+  <h1>Cloud, bajo control.</h1>
+  <p>Laboratorio de despliegue, seguridad y troubleshooting.<br>Estado real del backend y una consulta SQL a PostgreSQL.</p>
+  <div class="grid">
+    <article><h2>BASE DE DATOS</h2><div class="value" id="db">Consultando…</div><small>Consulta de verificación: SELECT 1</small></article>
+    <article><h2>USUARIO DEL PROCESO</h2><div class="value" id="uid">—</div><small id="root">Validando ejecución non-root</small></article>
+    <article><h2>CONTENEDOR</h2><div class="value" id="host">—</div><small id="env">Entorno de laboratorio</small></article>
+  </div>
+  <div class="panel"><h2>RECORRIDO DE LA PETICIÓN</h2><div class="flow">Cliente → Servicio web → Backend :8080 → Servicio db :5432 → PostgreSQL</div></div>
+  <div class="actions"><button id="refresh" type="button">Actualizar estado</button><a href="/health/live">Liveness</a><a href="/health/ready">Readiness</a><a href="/docs">API</a></div>
+  <div class="panel"><h2>RESPUESTA HTTP · /api/status</h2><pre id="result" aria-live="polite">Esperando respuesta…</pre></div>
+  <footer id="time">La aplicación consulta el estado al abrir esta página y al pulsar Actualizar.</footer>
+</main><script>
+  const el = id => document.getElementById(id);
+  async function refresh(){
+    el('refresh').disabled=true;
+    try{
+      const response=await fetch('/api/status',{cache:'no-store',signal:AbortSignal.timeout(10000)});
+      const data=await response.json();
+      el('badge').textContent=response.ok?'Servicio operativo':'Servicio degradado';
+      el('badge').className='badge '+(response.ok?'ok':'bad');
+      el('db').textContent=data.database.status==='connected'?'Conectada':'Sin conexión';
+      el('db').className='value '+(response.ok?'ok':'bad');
+      el('uid').textContent='UID '+data.uid;
+      el('root').textContent=data.non_root?'Proceso sin privilegios de root':'Atención: proceso root';
+      el('host').textContent=data.hostname;
+      el('env').textContent='Entorno: '+data.environment;
+      el('result').textContent='HTTP '+response.status+'\n'+JSON.stringify(data,null,2);
+      el('time').textContent='Última consulta: '+new Date().toLocaleString('es-PE');
+    }catch(error){
+      el('badge').textContent='Backend no disponible';el('badge').className='badge bad';
+      el('db').textContent='Sin verificar';el('db').className='value bad';
+      el('uid').textContent='—';el('host').textContent='—';
+      el('root').textContent='Sin verificar';el('env').textContent='Sin verificar';
+      el('result').textContent='No se pudo consultar el backend. Revisar Pods, Service y eventos.';
+    }finally{el('refresh').disabled=false;}
+  }
+  el('refresh').addEventListener('click',refresh);refresh();
+</script></body></html>

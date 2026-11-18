@@ -1,0 +1,39 @@
+# Credenciales desechables de laboratorio, nunca reutilizar en producción.
+services:
+  db:
+    image: postgres:17-bookworm
+    user: "10001:10001"
+    read_only: true
+    environment:
+      POSTGRES_DB: s12lab
+      POSTGRES_USER: labuser
+      POSTGRES_PASSWORD: s12-demo-only
+      PGDATA: /var/lib/postgresql/data/pgdata
+    tmpfs:
+      - /var/lib/postgresql/data:uid=10001,gid=10001,mode=0700
+      - /var/run/postgresql:uid=10001,gid=10001
+      - /tmp:uid=10001,gid=10001
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  app:
+    build: .
+    image: luci4sanchez2007/s12-cloud-lab:1.0.0
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    ports: ["127.0.0.1:8080:8080"]
+    environment:
+      APP_ENV: lab
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: s12lab
+      DB_USER: labuser
+      DB_PASSWORD: s12-demo-only
+    depends_on:
+      db:
+        condition: service_healthy

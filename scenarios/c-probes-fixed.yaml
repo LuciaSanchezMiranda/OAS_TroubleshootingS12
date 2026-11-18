@@ -1,0 +1,13 @@
+spec:
+  template:
+    spec:
+      containers:
+        - name: app
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
